@@ -46,31 +46,33 @@
 {p 150 0 0}({it:{back:back to previous section}})  {p_end}
 {title:Description}
 
-{pstd} {cmd:iwplot_svyp} is a program used to make inchworm plots for survey-estimated proportions. In order to run this program, you will need to install the iwplot_svyp package.{p_end}
-{pstd} You may acquire the files from the Stata SSC Archive (type ssc install {cmd:iwplot_svyp} from the Stata command line) or visit the {browse "http://biostatglobal.com": Biostat Global Consulting website} to find a link to a {bf:GitHub repository}.{p_end}
+{pstd} {cmd:iwplot_svyp} is a program used to make inchworm plots for survey-estimated proportions. In order to run this program, you will need to install the iwplot_svyp package. {p_end}
 
-{pstd} The {cmd:iwplot_svyp} program creates the inchworm plot and allows for the flexibility of using the options from the {help twoway} and {help graph} commands. The different options are specified through multiple datasets or noted in the syntax. {cmd:iwplot_svyp} program creates the inchworm plot according to your specifications. {p_end}
+{pstd} You may acquire the files from the Stata SSC Archive.  Type ssc install {cmd:iwplot_svyp} from the Stata command line or visit the {browse "http://biostatglobal.com":Biostat Global Consulting website} to find a link to a GitHub repository. {p_end}
 
-{pstd} Only one dataset, known as the {help iwplot_svyp##inputdata:inputdata}, is necessary to run the {cmd:iwplot_svyp} program. The {help iwplot_svyp##inputdata:inputdata} set must contain all the required variables noted in the {help iwplot_svyp##distribution_info:distribution_info} section below. The other datasets and options add additional features to the plot and only need to be created if you wish to utilize that specific function. Each dataset or option will need to be listed in the program syntax following the apppriate syntax value. Examples for how each should be listed are provided in the appropriate sections below. {p_end}
+{pstd} The {cmd:iwplot_svyp} program creates the inchworm plot and allows for the flexibility of using the options from the {help twoway} and {help graph} commands. Different options are specified through multiple datasets or noted in the syntax. {p_end}
 
-{pstd} If you wish to not use a Stata dataset, you may use the {bf:iwplot_svyp_template} found on the the {bf:GitHub repository}. Please see {helpb excel_wrapper_for_iwplot_svyp} for additional information regarding this method. {p_end}
+{pstd} Only one dataset, known as the {help iwplot_svyp##inputdata:inputdata}, is required to run the {cmd:iwplot_svyp} program. The {help iwplot_svyp##inputdata:inputdata} set must contain all the required variables noted below. {p_end}
+
+{pstd} You may generate the {help iwplot_svyp##inputdata:inputdata} dataset using Stata or specify the values in an Excel file and call the {helpb excel_wrapper_for_iwplot_svyp}. {p_end}
 
 	
 {hline}
 {marker inputdata}
 {title:Required Input} 
 
-{pstd} {bf:INPUTDATA} - Name of the dataset that contains all the data required from the {help iwplot_svyp##distribution_info:distribution_info} section to run {cmd:iwplot_svyp}. {p_end}
-{pmore} {bf:Example: inputdata({it:"filename"}).} {p_end}
+{pstd} {bf:INPUTDATA} - Name of the dataset that summarizes {help iwplot_svyp##distribution_info:distribution_info}. {p_end}
+{pmore} {bf:Example: inputdata({it:"dataset name"}).} {p_end}
 
-{pmore} {bf: NOTE Double quotes need to be around the name of the dataset.} {p_end}
+{pmore} {bf: NOTE Double quotes need to used if the dataset path or name include spaces.} {p_end}
 {marker distribution_info}
 {p 150 0 0}({it:{back:back to previous section}})  {p_end}
 {dlgtab:distribution_info} 
 
-{pstd} This section contains the {bf:only} data {it:{red:required}} to run the {cmd:iwplot_svyp} program. However, not all of the variables in this section are required. The below will indicate which ones must be populated in order for the program to run. {p_end}
+{pstd} This section contains the {bf:only} data {it:{red:required}} to run the {cmd:iwplot_svyp} program. The dataset includes one row or observation for each distribution that will appear in the plot.  Note below that some variables in this section are required and some are optional.  {p_end}
+
 {pmore} {bf: NOTE This dataset should be listed as the filename for your inputdata syntax.} {p_end}
-{pmore} {bf: Example: If your dataset containthing this information is named {it:distribution_info}, the below syntax is used:} {p_end}
+{pmore} {bf: Example: If your dataset containing this information is named {it:distribution_info}, then specify:} {p_end}
 
 {pmore3} {it: iwplot_svyp, inputdata("distribution_info")}
 
@@ -78,37 +80,37 @@
 {pstd} {opt source} ({it:string}) {red:Required}- Can take on the value of either {bf:ESS} or {bf:DATASET}; this may vary by row {p_end}
 {pmore} Indicates how the program will get the data to create the plot. {p_end}
 
-{pmore2}	{bf:1. ESS - Effective Sample Size is provided in param1.} {p_end}
+{pmore2}	{bf:1. ESS - Effective sample size is provided in param1.} {p_end}
 {pmore2}	{bf:2. DATASET - Path and name of survey dataset is provided in param4 and used to estimate the proportion.} {p_end}
 
-{pmore} {bf:NOTE: You can create the plot using both ESS and DATASET if each are put on a separate row in the dataset and have the same number listed in the rownumber variable. ESS and DATASET {it:cannot} be listed together as a variable value.} {p_end}
 
-{pstd} {opt param1} ({it:numerical}) {red:Required if source is ESS} - Effective sample size (ESS) 
+{pstd} {opt param1} ({it:integer}) {red:Required if source is ESS} - Effective sample size (ESS) 
 
-{pstd} {opt param2} ({it:numerical}) {red:Required if source is ESS} - Estimated survey proportion p (1-100)
+{pstd} {opt param2} ({it:numerical}) {red:Required if source is ESS} - Estimated survey proportion, expressed as a percent: takes values from 0 to 100
 
 {pstd} {opt param3} ({it:string}) - Name of the method to use for estimating confidence intervals;  Any value accepted by the svyp program is allowable here. {bf:(Wilson by default)} {p_end}
 {pmore} {bf:NOTE Options currently include Clopper, Wilson, or Logit.} {p_end}
 
-{pstd} {opt param4} ({it:string}) {red:Required if source is DATASET} - Path and name of the survey dataset to be used to estimate the proportion. {p_end}
+{pstd} {opt param4} ({it:string}) {red:Required if source is DATASET} - Path and name of the survey dataset to be used to estimate the proportion {p_end}
 
-{pstd} {opt param5} ({it:string}) {red:Required if source is DATASET} - Name of the variable whose proportion is being estimated. {p_end}
+{pstd} {opt param5} ({it:string}) {red:Required if source is DATASET} - Name of the variable whose proportion is being estimated {p_end}
 
-{pstd} {opt param6} ({it:string}) {red:Required if source is DATASET} - Svyset command to be issued before estimating the proportion. {p_end}
+{pstd} {opt param6} ({it:string}) {red:Required if source is DATASET} - Svyset command to be issued before estimating the proportion {p_end}
 
-{pstd} {opt param7} ({it:string}) {red:Required if source is DATASET} - Stata 'if' syntax to restrict the estimation to the subpopulation of interest. {p_end}
-{pmore} {bf:Example: If you wanted to graph by stratum number this would be populated with if stratum == 1  for Stratum 1} {p_end}
+{pstd} {opt param7} ({it:string}) {red:Required if source is DATASET} - Stata 'if' syntax to restrict the estimation to the domain (subpopulation) of interest {p_end}
+
+{pmore} {bf:Example: if stratum == 1 (for Stratum 1)} {p_end}
 {p 150 0 0}({it:{back:back to previous section}})  {p_end}
 {pstd} {opt rightsidetext} ({it:string}) - Custom text to put on the right hand side instead if CI text. {p_end}
-{pmore} {bf:NOTE If the user specifies {it:CITEXT}, this option trumps that value and {it:CITEXT} will be turned off.  Only one rightsidetext value can be specified for each rownumber.} {p_end}
+{pmore} {bf:NOTE If the user specifies {it:CITEXT}, the rightsidetext option trumps the CITEXT value.  Only one rightsidetext value can be specified for each rownumber.} {p_end}
 {pmore} {bf:If there is more than one distribution on any row of the plot (two distributions have the same rownumber) and the rightsidetext differs for each distribution,} {p_end}
-{pmore} {bf:this function is turned {it:off} as the program does not know which value to use. The same rule applies to {it:CITEXT}}. {p_end}
+{pmore} {bf:the value specified last (in the later row or observation of the inputdata dataset) because the program does not know which value to use. The same rule applies to {it:CITEXT}}. {p_end}
 {pmore} {bf:However, if the {it:CITEXT} is turned off due to value conflict and the rightsidetext is used correctly, one value per rownumber, the rightsidetext function will work.} {p_end}
 
 {pstd} {opt rowname} ({it:string}) - Row labels which will be displayed on left side of the plot. {bf:(_n by default)}{p_end}
 {pmore} {bf: NOTE Be sure not to list conflicting rownames if you put more than one distribution on a row; the program sorts the dataset by rownumber and only pays attention to the last rowname defined foreach rownumber.} {p_end}
 
-{pstd} {opt rownumber} ({it:numerical}) - Row number (y-coordinate) the distribution is centered on. {bf:(_n by default)} {p_end}
+{pstd} {opt rownumber} ({it:numerical}) - Row number (y-coordinate) the distribution is centered on.. {bf:(_n by default)} {p_end}
 {pmore} {bf:NOTE Row 1 is the bottom row.} {p_end}
 
 {pstd} {opt outlinecolor} ({it:string}) - {bf:lcolor} valid Stata color for outline {bf:(black by default)} (See {help colorstyle}) {p_end}
@@ -126,7 +128,7 @@
 
 {pstd} {opt markvalue} ({it:numerical}) - Percentile at which to show a vertical tick for reference (0-100). {p_end}
 {pmore} {bf:NOTE It should be left blank if no vertical tick is needed.} {p_end}    
-{pstd} {opt markvaluecolor} ({it:string}) - valid Stata color for veritcal tick {bf:(none by default)}  (See {help colorstyle}) {p_end}
+{pstd} {opt markvaluecolor} ({it:string}) - valid Stata color for vertical tick {bf:(none by default)}  (See {help colorstyle}) {p_end}
 
 {pstd} {opt clip} ({it:numerical}) - Width of the CI at which to clip the graphic distribution {it:(usually 95)}. {p_end}
 {pmore} {bf:NOTE This value has to be missing or between 0.01 and 99.9.} {p_end}
@@ -142,29 +144,29 @@
 {pstd} {opt ucbcolor} ({it:string}) - valid Stata color for ucb tick {bf:(none by default)} (See {help colorstyle}){p_end}
 
 {pstd} {opt shadebehind} ({it:string}) - valid Stata color for shaded line behind row {bf:(none by default)} (See {help colorstyle}) {p_end}
-{pmore} {bf:NOTE If not missing, there will be a shaded line behind the row specified. This is used to draw the eye to this row. ({it:Often used to hightlight the national level results})} {p_end}
+{pmore} {bf:NOTE If not missing, there will be a shaded line behind the row specified. This is used to draw the eye to this row. ({it:Often used to hightlight the aggregate level results})} {p_end}
 {pmore} {bf:If it is missing, the plot will not have a shaded line behind the distribution.} {p_end}
 
 {pmore} {bf:NOTE Caution is needed if you put more than one distribution on a row. If any of the distributions specify a shadebehind color, then the row will be shaded.}{p_end}
-{pmore} {bf:The program sorts the dataset by rownumber and uses the last shadebehind color listed per row.} {p_end}
+{pmore} {bf:The program sorts the dataset by rownumber and uses the last shadebehind color listed per rownumber.} {p_end}
 
 {hline}
 {marker optional}
 {title:Optional Input}
 
-{pstd} The options under this section allow you to have more control over how the plot looks and is saved. Each of these tabs are {it:optional} and not required.  {p_end}
+{pstd} The options under this section allow you to have more control over how the plot looks and is saved. Each is {it:optional}.  {p_end}
 
-{pstd} {bf:NOTE Even though the tabs are optional, certain variables are {it:required} if you wish to utilize that specific function. The required variables will be noted in each section below.} {p_end}
+{pstd} {bf:NOTE Certain options specify the names of datasets.  If you choose to use that option, then certain variables are {it:required}. The required variables are noted in each section below.} {p_end}
 {marker command_lines1}
 {p 150 0 0}({it:{back:back to previous section}})  {p_end}
-{dlgtab:command_lines} 
+{dlgtab:command line options} 
 
-{pstd} The {bf:command_lines} dataset contains variables used to specify how the plot should be created and saved. The variables will need to be mentioned in the {cmd:iwplot_svyp} syntax so they are passed through program. {it:Examples of the appropriate syntax for each option is provided below. The specific option will be noted in {red:red}.} {p_end}
+{pstd} The command line options specify how the plot should be created and saved. Appropriate syntax for each option is provided below. {p_end}
 
 {pstd} Please reference {help twoway} to see valid values for each option listed below. {p_end}
 
 {pstd} {opt nl} ({it:numerical}) - Number of points at which to calculate the shape of the top of each distribution. {bf:(50 is the default)} {p_end}
-{pmore} Typical values are any number between 0 and 100, incrementing by 5. {bf:Example: 0,5,10,15,20  etc.} {p_end}
+{pmore} Typical values are any number between 5 and 50.  Smaller values run faster but result in coarse distributions.  Use a value like 50 for a finished product. {p_end}
 
 {pmore3} {bf: Syntax:} {it:iwplot_vcqi, inputdata("distribution_info")} {bf:{red:nl(50)}} 
 
@@ -188,10 +190,10 @@
 
 {pmore3} {bf: Syntax:} {it:iwplot_vcqi, inputdata("distribution_info")} {bf:{red:note("Plot Note Example")}} {p_end}
 {marker command_lines2}
-{pstd} {opt xaxisrange} ({it:numerical}) - {bf:range} from minimum to maximum for X axis {bf:({help numlist} by default}) (See {help axis_scale_options} or {help numlist}) {p_end}
+{pstd} {opt xaxisrange} ({it:numerical}) - {bf:range} from minimum to maximum for X axis) (See {help axis_scale_options}) {p_end}
 {pmore} {bf:NOTE If xaxisrange is left blank then program will create a range based on minimum and maximum values of X}	{p_end}
 {p 150 0 0}({it:{back:back to previous section}})  {p_end}
-{pmore3} {bf: Syntax:} {it:iwplot_vcqi, inputdata("distribution_info")} {bf:{red:xaxisrange(1-100)}}
+{pmore3} {bf: Syntax:} {it:iwplot_vcqi, inputdata("distribution_info")} {bf:{red:xaxisrange(0 100)}}
 
 {pstd} {opt xsize} ({it:numerical}) - {bf:xscale} (how x axis looks) {bf:(10 is the default)} (See {help axis_scale_options}) {p_end}
 
@@ -200,7 +202,6 @@
 {pstd} {opt ysize} ({it:numerical}) - {bf:yscale} (how y axis looks) {bf:(10 is the default)} (See {help axis_scale_options}) {p_end}
 
 {pmore3} {bf: Syntax:} {it:iwplot_vcqi, inputdata("distribution_info")} {bf:{red:ysize(15)}} {p_end}
-
 {marker command_lines3}
 {p 150 0 0}({it:{back:back to previous section}})  {p_end}
 {pstd} {opt citext} ({it:numerical}) Can take on a value of 0, 1, 2, 3, 4 or 5 {bf:(0 is the default)} {p_end} 
@@ -224,7 +225,7 @@
 
 {pmore2}		{bf:1) Distributions will not be re-scaled; their coordinates will be set up so they are equal-area under the so-called stair-step polygon,}{p_end}
 {pmore3}			{bf:	which does not take triangles into account and is not constrained to be a strictly-increasing polygon.} {p_end}
-{pmore2}		{bf:2) Distributions will be scaled to be equal-area under the so-called smooth bounding polygons (the ones that include triangles and are constrained to not decrease in h).} {p_end}
+{pmore2}		{bf:2) Distributions will be scaled to be equal-area under the so-called smooth bounding polygons that include triangles and are constrained to not decrease in height as the distribution approaches the point estimate.} {p_end}
 
 {pmore3} {bf: Syntax:} {it:iwplot_vcqi, inputdata("distribution_info")} {bf:{red:equalarea(1)}} {p_end}
 
@@ -268,7 +269,7 @@
 {pmore2}		{bf:6. png (Portable Network Graphics)} (See {help png_options}) {p_end}
 {pmore2}		{bf:7. tif (TIFF)} (See {help tif_options}) {p_end}
 
-{pmore3} {bf: Syntax:} {it:iwplot_vcqi, inputdata("distribution_info")} {bf:{red:export("Example graph Export.png",replace)}} {p_end}
+{pmore3} {bf: Syntax:} {it:iwplot_vcqi, inputdata("distribution_info")} {bf:{red:export("Example graph Export.png", width(2000) replace)}} {p_end}
 
 {pstd} {opt twoway} ({it:string}) - Allows the user to add any additional options found under {help twoway} graphs that are not included in the dataset. {p_end}
 {pmore} Add the appropriate syntax as the value for the twoway variable for the desired option(s). {p_end}
@@ -283,13 +284,13 @@
 {pmore2}		{bf:2. blank- All datasets created by the program will be {it:kept} in the working directory.} {p_end}
 
 
-{pmore3} {bf: Syntax:} {it:iwplot_vcqi, inputdata("distribution_info")} {bf:{red:cleanwork("YES",replace)}} {p_end}
+{pmore3} {bf: Syntax:} {it:iwplot_vcqi, inputdata("distribution_info")} {bf:{red:cleanwork(YES)}} {p_end}
 
 {marker TEXTONPLOTdata}
 {p 150 0 0}({it:{back:back to previous section}})  {p_end}
 {dlgtab:TEXTONPLOTdata} 
 
-{pstd} The {bf:TEXTONPLOTdata} dataset is used to describe text on plot.{p_end}
+{pstd} The {bf:TEXTONPLOTdata} dataset is used to overlay text on plot.{p_end}
 {pstd} Please reference {help added_text_options} or {help textbox_options} under {help twoway} to see the different options. {p_end}
 
 
@@ -305,9 +306,9 @@
 
 {pstd}{opt orientation} ({it:string})	 - {bf:orientation} of textbox {bf:(horizontal is the default)} (See {help orientationstyle})
 
-{pmore3} {bf: Syntax:} {it:iwplot_vcqi, inputdata("distribution_info")} {bf:{red:textonplot("textdata")}} {p_end}
+{pmore3} {bf: Syntax:} {it:iwplot_vcqi, inputdata("distribution_info")} {bf:{red:textonplot("dataset_holding_textonplot_variables")}} {p_end}
 
-{pmore} {bf:NOTE It is possible to add as many textboxes as desired. A separate row will need to be added to the dataset for each textbox.} {p_end}
+{pmore} {bf:NOTE It is possible to add as many text annotations as desired. A separate row will need to be added to the dataset for each textbox.} {p_end}
 	
 {marker ARROWSdata}
 {p 150 0 0}({it:{back:back to previous section}})  {p_end}
@@ -336,7 +337,7 @@
 {p 150 0 0}({it:{back:back to previous section}})  {p_end}
 {dlgtab:HORlinesdata} 
 
-{pstd} The {bf:HORlinesdata} dataset is used to create horizontal lines on the plot.{p_end}
+{pstd} The {bf:HORlinesdata} dataset is used to overlay horizontal lines on the plot.{p_end}
 {pstd} Please reference {help added_line_options} under {help twoway} to see the different options. {p_end}
 
 
@@ -364,7 +365,7 @@
 {p 150 0 0}({it:{back:back to previous section}})  {p_end}
 {dlgtab:VERlinesdata} 
 
-{pstd} The {bf:VERlinesdata} dataset is used to create veritcal lines on the plot.{p_end}
+{pstd} The {bf:VERlinesdata} dataset is used to overlay veritcal lines on the plot.{p_end}
 {pstd} Please reference {help added_line_options} under {help twoway} to see the different options.{p_end}
 
 
@@ -386,7 +387,7 @@
 
 {pmore3} {bf: Syntax:} {it:iwplot_vcqi, inputdata("distribution_info")} {bf:{red:verlinesdata("vertical_line_data")}} {p_end}
 
-{pmore} {bf:NOTE It is possible to add as many veritcal lines as needed. UA separate row will need to be added to the dataset for each vertical line.} {p_end}
+{pmore} {bf:NOTE It is possible to add as many veritcal lines as needed. A separate row will need to be added to the dataset for each vertical line.} {p_end}
 
 
 

@@ -90,7 +90,7 @@ the proportion is 0 or 1; this is probably not a horrible idea.){p_end}
 {pstd}{browse "http://en.wikipedia.org/wiki/Binomial_proportion_confidence_interval"}{p_end}
 {pstd}{browse "http://www.stata.com/statalist/archive/2004-09/msg00176.html"}{p_end}
 
-{pstd} To to run this program, you will need to install the svyp package.{p_end}
+{pstd} To run this program, you will need to install the svyp package.{p_end}
 {pstd} You may acquire the files from the Stata SSC Archive (type ssc install 
 {cmd:svyp} from the Stata command line) or visit the 
 {browse "http://biostatglobal.com": Biostat Global Consulting website} 

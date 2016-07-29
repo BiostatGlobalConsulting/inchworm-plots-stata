@@ -45,17 +45,20 @@
 
 {pstd} {cmd:excel_wrapper_for_iwplot_svyp} is a program that can be used with {helpb iwplot_svyp} to make inchworm plots for survey-estimated proportions. In order to run this program, you will need to install the iwplot_svyp package.{p_end}
 
-{pstd} You may acquire the files from the Stata SSC Archive (type ssc install {cmd:iwplot_svyp}  and {cmd:excel_wrapper_for_iwplot_svyp} from the Stata command line) or visit the {browse "http://biostatglobal.com": Biostat Global Consulting website} to find a link to a {bf:GitHub repository}.{p_end}
+{pstd} You may acquire the files from the Stata SSC Archive.  Visit the {browse "http://biostatglobal.com":Biostat Global Consulting website} to find a link to a GitHub repository. {p_end}
 
-{pstd} The standardized template for {cmd: excel_wrapper_for_iwplot_svyp} is also available on the{browse "http://biostatglobal.com": Biostat Global Consulting} {bf:GitHub repository} page, titled {bf:iwplot_svyp_template}. The template contains the 6 tabs {it:required} for this wrapper to work with {helpb iwplot_svyp}. {p_end}
+{pstd} The standardized template for {cmd: excel_wrapper_for_iwplot_svyp} is also available on the {browse "http://biostatglobal.com":Biostat Global Consulting website} GitHub repository page, titled {bf:iwplot_svyp_template}.{p_end}
+{pstd} The template contains the 6 tabs {it:required} for this wrapper to work with {helpb iwplot_svyp}. {p_end}
 
 {pmore} {bf: NOTE It is {ul:important} for all 6 tabs to remain on the template even if the data is blank. If any tabs are {ul:missing} it will cause the program to error.} 
 
-{pstd} The six tabs that make up {bf:iwplot_svyp_template} correspond to the required and optional datasets/options for the {helpb iwplot_svyp} program. They are as follows: {help excel_wrapper_for_iwplot_svyp##distribution_info:distribution_info}, {help excel_wrapper_for_iwplot_svyp##command_lines:command_lines}, {help excel_wrapper_for_iwplot_svyp##textbox:textbox}, {help excel_wrapper_for_iwplot_svyp##arrows:arrows}, {help excel_wrapper_for_iwplot_svyp##horizontal_lines:horizontal_lines} and {help excel_wrapper_for_iwplot_svyp##vertical_lines:vertical_lines}.  
+{pstd} The six tabs that make up {bf:iwplot_svyp_template} correspond to the required and optional datasets/options for the {helpb iwplot_svyp} program. They are as follows: distribution_info, command_lines, textbox, arrows, horizontal_lines and vertical_lines.{p_end}
 
 {title:How the wrapper works}
 
-{pstd} Just like in {helpb iwplot_svyp}, {cmd:excel_wrapper_for_iwplot_svyp} allows for the flexibility of using the options from the {help twoway} and {help graph} commands. However, rather than the options being specified through multiple datasets or noted in the syntax, they are populated on the appropriate tab in the {bf:iwplot_svyp_tempate}. {cmd:excel_wrapper_for_iwplot_svyp} takes the data within the spreadsheet provided and creates the datasets necessary to run {helpb iwplot_svyp}.{p_end}
+{pstd} Just like in {helpb iwplot_svyp}, {cmd:excel_wrapper_for_iwplot_svyp} allows for the flexibility of using the options from the {help twoway} and {help graph} commands. {p_end}
+{pstd} However, rather than the options being specified through multiple datasets or noted in the syntax, they are populated on the appropriate tab in the {bf:iwplot_svyp_template}. {p_end} 
+{pstd} {cmd:excel_wrapper_for_iwplot_svyp} takes the data within the spreadsheet provided and creates the datasets necessary to run {helpb iwplot_svyp}. {p_end}
 
 {pstd} After {cmd: excel_wrapper_for_iwplot_svyp} has created the datasets, it then runs {cmd:iwplot_svyp} to create the inchworm plot(s) according to your specifications. {p_end}
 
@@ -74,7 +77,8 @@
 {p 150 0 0}({it:{back:back to previous section}})  {p_end}
 {dlgtab:distribution_info} 
 
-{pstd} The distribution_info tab is the {bf:only} tab that must contain some data to run both the {cmd: excel_wrapper_for_iwplot_svyp} and {helpb iwplot_svyp} program. However, not all of the variables in the spreadsheet are {red:required}. {p_end}
+{pstd} The distribution_info tab is the {bf:only} tab that must contain some data to run both the {cmd: excel_wrapper_for_iwplot_svyp} and {helpb iwplot_svyp} program. {p_end}
+{pstd} However, not all of the variables in the spreadsheet are {red:required}. {p_end}
 
 {pmore} {bf:Please reference {help iwplot_svyp##distribution_info:distribution_info} for the specific requirements regarding this tab.} 
 
