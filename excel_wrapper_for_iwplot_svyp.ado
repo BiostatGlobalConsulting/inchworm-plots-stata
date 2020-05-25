@@ -1,29 +1,26 @@
-*!excel_wrapper_for_iwplot_svyp version 1.1 2016-06-07
-
-/**********************************************************************
-Program Name:              excel_wrapper_for_iwplot_svyp
-Purpose:                   Program to allow users to use an excel file as input for iwplot_svyp
-Project:                   
-Charge Number:  
-Date Created:    			2016-05-12
-Date Modified:  
-Input Data:                 
-Output2:                                
-Comments: 
-Author:         Mary Kay Trimner
-
-Stata version:    14.0
-**********************************************************************/
-capture program drop excel_wrapper_for_iwplot_svyp
+*! excel_wrapper_for_iwplot_svyp version 1.03 - Biostat Global Consulting - 2019-10-17
+*******************************************************************************
+* Change log
+* 				Updated
+*				version
+* Date 			number 	Name			What Changed
+* 2017-08-26	1.01	Mary Prier		Added version 14.1 line
+* 2019-02-14	1.02	MK Trimner		Added line to run iwplot if commandlines empty
+*										This will run with default values and will not save
+* 2019-10-17	1.03 	Dale Rhoda		Set IWPLOT_SHOWBARS to 0 by default
+*******************************************************************************
 
 program define excel_wrapper_for_iwplot_svyp
-
+	version 14.1
+	
 	* Set the local for xlsname for importing data
 	local xlsname `1'
 	
 	capture program drop iwplot_svyp
 	
 	set more off
+	
+	if "$IWPLOT_SHOWBARS" == "" global IWPLOT_SHOWBARS 0
 	
 	* read the main worksheet with info about distributions, markvalues,
 	* clipping, lcb ticks, ucb ticks, shading behind distributions
@@ -111,20 +108,22 @@ program define excel_wrapper_for_iwplot_svyp
 
 
 	import excel using "`xlsname'", sheet("command_lines") firstrow allstring clear
-	capture quietly destring nl  			, replace
-	capture quietly destring xaxisrange		, replace
-	capture quietly destring xsize  		, replace
-	capture quietly destring ysize  		, replace
-	capture quietly destring equalarea 		, replace
-	capture quietly destring polygon 		, replace
+	capture quietly destring nl  				, replace
+	capture quietly destring xaxisdesign		, replace
+	capture quietly destring xsize  			, replace
+	capture quietly destring ysize  			, replace
+	capture quietly destring equalarea 			, replace
+	capture quietly destring polygon 			, replace
+	capture quietly destring citext         	, replace
+	capture quietly destring citextleftmargin	, replace
 	
 	if `=_N' > 0 {
 		* Create the command_line locals based on the values from the spreadsheet
 		forvalues i = 1/`=_N' {
-			foreach v in nl xtitle ytitle title subtitle note xaxisrange xsize ysize citext equalarea saving name export cleanwork twoway {
+			foreach v in nl xtitle ytitle title subtitle note xaxisdesign xaxisrange xsize ysize citext citextleftmargin equalarea saving name export cleanwork twoway {
+				capture gen `v' = .
 				local `v' 
 				if !missing(`v'[`i'])	local `v' `v'(`=`v'[`i']')
-
 			}
 			
 			preserve
@@ -133,16 +132,18 @@ program define excel_wrapper_for_iwplot_svyp
 				inputdata("`distribution'") 		///
 				`nl'								///
 				`xtitle' `ytitle' `title' ///
-				`subtitle' `note' `xaxisrange' `xsize' `ysize' ///
+				`subtitle' `note' `xaxisdesign' `xaxisrange' `xsize' `ysize' ///
 				`verplot' `horplot'  `textplot' `arrowplot' ///
-				`citext' `equalarea' ///
+				`citext' `citextleftmargin' `equalarea' ///
 				`saving' `name' `export' `cleanwork' `twoway'
 
 			restore
 		}
 	}
+	else iwplot_svyp, 						///
+				inputdata("`distribution'") 	///
+				`verplot' `horplot' `textplot' `arrowplot'
 
-	
 	capture erase arrows.dta
 	capture erase textbox.dta
 	capture erase test1.dta

@@ -1,4 +1,4 @@
-*! iwplot_svyp version 1.18 - Biostat Global Consulting - 2016-06-06
+*! iwplot_svyp version 1.25 - Biostat Global Consulting - 2019-10-17
 *******************************************************************************
 * Change log
 * 				Updated
@@ -97,6 +97,33 @@
 *										specify different values within a single
 *										plot
 *
+*	2016-09-15	1.19	Dale Rhoda		Added caption option
+*
+* 	2016-10-26	1.20	Dale Rhoda		Call new svyp routines for faster 
+*										results and to allow non-integer 
+*										values of ESS
+*
+*  	2017-06-14	1.21	Dale Rhoda		Introduced macro named
+*										multiple_shapes_on_some_rows to more
+*										easily track when the user has
+*										requested that and to take appropriate
+*										measures with citext and with row
+*										label and text at right
+*
+*	2017-08-21	1.22	Dale Rhoda		Put the shaded rows BEHIND vertical 
+*										and horizontal lines and stripped
+*										.0 from 100.0 in cistring
+*										
+* 2017-08-26	1.23	Mary Prier		Added version 14.1 line
+*
+* 2019-10-10  	1.24  	Dale Rhoda  	Allow flexible number of decimal places and
+*                               		allow the user to request bars instead of
+*										inchworm distributions via the 
+*                               		$IWPLOT_SHOWBARS global macro (0 for 
+*										inchworms and 1 for bars)
+*
+* 2019-10-17	1.25	Dale Rhoda		Set default decimal digits to 1
+
 *********************************************************************************
 * All datasets which are called into this program should be stored in 
 * the working directory; the plot will also be saved in the working directory
@@ -109,11 +136,17 @@
 * Variables:
 *	source (string)        -- either ESS or DATASET; this may vary by row
 *   param1 (numerical)     -- If source is ESS, this holds the effective sample size (ESS)
+*							  (Note that ESS does NOT need to be an integer.)
 *   param2 (numerical)     -- If source is ESS, this holds the estimated survey proportion p (1-100)
 *   param3 (string)        -- For either ESS or DATASET, this parameter holds the name of
 *                           the method to use for estimating confidence intervals;
 *                           Any value accepted by the svyp program is allowable here.
-*                           Options currently include Clopper, Wilson, or Logit
+*                           Options currently include Clopper, Wilson, Logit or Jeffreys.
+*
+*							Note that if the sample proportion is 0% or 100% then
+*							the Logit and the Wilson options default to using a
+*							Clopper-Pearson interval.
+*
 *	param4 (string)        -- If source is DATASET, this param holds the path and name
 *                            of the survey dataset to be used to estimate the proportion
 *	param5 (string)        -- If source is DATASET, this holds the name of the variable
@@ -254,9 +287,9 @@
 *                  keep working directory clean, recommended option
 ********************************************************************************
 
-capture program drop iwplot_svyp
 program define iwplot_svyp
-	version 14.0
+	version 14.1
+	
 	syntax, 					///
 		INPUTdata(string) [		///
 		NL(integer 50) 			///
@@ -265,25 +298,28 @@ program define iwplot_svyp
 		TITLE(string asis)		///
 		SUBtitle(string asis) 	///
 		NOTE(string asis) 		///
+		CAPTION(string asis)	///
+		XAXISDESIGN(integer 1)	///
 		XAXISRANGE(numlist) 	///
-		XSIZE(real 10)		    ///
-		YSIZE(real 10)		    ///
+		XSIZE(numlist >0 <=20 min=1 max=1) 	///
+		YSIZE(numlist >0 <=20 min=1 max=1)  ///
 		VERlinesdata(string)	///
 		HORlinesdata(string) 	///
 		TEXTONPLOTdata(string) 	///
 		ARROWSdata(string) 	    ///
 		CItext(integer 0) 		///
+		CITEXTLEFTMARGIN(numlist >=0 min=1 max=1) ///
 		EQUALarea(integer 2)	///
 		SAVING(string asis) 	///
 		NAME(string asis) 		///
 		EXPORT(string asis)  	///
 		CLEANwork(string)		///
-		TWOway(string asis)]
+		TWOway(string asis) ]
 	
 	* write an entry in the log file if we are running VCQI
 	if "$VCQI_LOGOPEN" == "1" {
 		local oldvcp $VCP
-	global VCP iwplot_svyp
+		global VCP iwplot_svyp
 		vcqi_log_comment $VCP 5 Flow "Starting"
 	}
 	
@@ -291,6 +327,8 @@ program define iwplot_svyp
 	if "$VCQI_DEBUG" == "1" local q noisily
 	
 	`q' {
+	
+		if "$VCQI_NUM_DECIMAL_DIGITS" == "" global VCQI_NUM_DECIMAL_DIGITS 1
 	
 		* read in input data with distribution parameters	
 		use `inputdata', clear
@@ -341,8 +379,8 @@ program define iwplot_svyp
 			}
 		}
 		
-		* gen param3 if it is missing; default to WILSON
-		capture gen param3 = "WILSON"
+		* gen param3 if it is missing; default to LOGIT
+		capture gen param3 = "LOGIT"
 		
 		if !inlist(`equalarea',1,2) {
 			di as error "iwplot_svyp requires the input option equalarea to be 1 or 2"
@@ -363,6 +401,19 @@ program define iwplot_svyp
 			if "$VCQI_LOGOPEN" == "1" vcqi_halt_immediately
 			else exit 99
 		}
+		
+		* xaxisdesign must be 1 or 2 or 3
+		
+		if !inlist(`xaxisdesign',1,2,3) {
+			di as error 'iwplot_svyp requires the xaxisdesign option to be 1 or 2 or 3; you specified `xaxisdesign'."
+			if "$VCQI_LOGOPEN" == "1" vcqi_halt_immediately
+			else exit 99
+		}	
+		
+		* if user requests control over x-axis but does not specify range, 
+		* then revert to option 2 where x-axis is determined by data limits
+		
+		if `xaxisdesign' == 3 & "`xaxisrange'" == "" local xaxisdesign 2
 		
 		* default row for distributions
 		* if not specified, defaults to _n
@@ -442,7 +493,15 @@ program define iwplot_svyp
 		summarize rownumber
 		local nplotrows = r(max)
 		
-		if `bign' > `nplotrows' {
+		gen sortorder = _n
+		local multiple_shapes_on_some_rows 0
+		bysort rownumber: gen nperrow = _N
+		summarize nperrow
+		if r(max) > 1 local multiple_shapes_on_some_rows 1
+		sort sortorder
+		drop nperrow sortorder
+		
+		if `multiple_shapes_on_some_rows' {
 		
 			forvalues i = 1/`nplotrows' {
 				local lastsb
@@ -480,6 +539,7 @@ program define iwplot_svyp
 			
 			local rownumber`i'      = rownumber[`i']
 			local areacolor`i'      = lower(areacolor[`i'])
+			if wordcount("`areacolor`i''") == 3 local areacolor`i' = "`areacolor`i''"
 			local areaintensity`i'  = int(areaintensity[`i'])
 			
 			local outlinecolor`i'   = lower(outlinecolor[`i'])
@@ -778,11 +838,16 @@ program define iwplot_svyp
 		* macros.
 		
 
-		forvalues i = 1/`nl' {
-			local lvl`i' = 0.01 + (`=(`i'-1)*((99.99-0.01)/(`=`nl'-1'))')
-			local lvl`i' = substr("`lvl`i''",1,5)
+		if "${CILEVELLIST_`nl'}" == "" {
+			local llist 
+			forvalues i = 1/`nl' {
+				local lvl`i' = 0.01 + (`=(`i'-1)*((99.99-0.01)/(`=`nl'-1'))')
+				local llist `llist' `=substr("`lvl`i''",1,5)'
+			}
+			global CILEVELLIST_`nl' = "`llist'"
+			local llist
 		}
-			   
+
 		forvalues i = 1/`bign' {
 		
 			noisily di "Calculating outline for distribution # `i': `rowname`rownumber`i'''"
@@ -790,15 +855,12 @@ program define iwplot_svyp
 			
 			* Data for this distribution will be simulated using 
 			* an effective sample size and estimated coverage
+
 			if "`source`i''" == "ESS" {
-				clear
-				quietly set obs `effss`i''
-				gen y = 0
-				quietly replace y = 1 if _n <= round(`effss`i'' * `p`i''/100,1)
-				quietly svyset _n
-				local y y
-				local ifi
+				local call_svyp qui svyp_ci_calc, p(`=`p`i''/100') stderr(`=sqrt(((`p`i''/100)*(1-(`p`i''/100)))/`effss`i'')') n(`effss`i'') method(`method`i'') 
+				* Note that we do not 'adjust' when source is ESS because we do not typically know the dof...and those are needed for the function of ESS by level
 			}
+
 			
 			* Data for this distribution come from a dataset
 			if "`source`i''" == "DATASET" {
@@ -806,28 +868,33 @@ program define iwplot_svyp
 				local y `variable`i''
 				quietly `svyset`i''
 				local ifi `if`i''
+				
+				qui count `ifi'
+				if r(N) == 0 continue
+				local call_svyp qui svypd `y' `ifi', method(`method`i'') adjust truncate 
+				
 			}
 			
-			quietly svyp `y' `ifi', method(`method`i'') 
+			`call_svyp' level(95)
 			
 			matrix table[`i', 1] = r(svyp)*100  
 			matrix table[`i', 2] = r(N)   
-			matrix table[`i', 3] = r(lb95)*100
-			matrix table[`i', 4] = r(ub95)*100
-			matrix table[`i', 5] = r(lb90)*100
-			matrix table[`i', 6] = r(ub90)*100
+			matrix table[`i', 3] = r(lb_alpha)*100
+			matrix table[`i', 4] = r(ub_alpha)*100
+			matrix table[`i', 5] = r(lb_2alpha)*100
+			matrix table[`i', 6] = r(ub_2alpha)*100
 			
 			if "`lcb`i''" != "" & "`lcb`i''" != "." {
 				if `lcb`i'' >= 50 {
-					qui svyp `y' `ifi', level(`lcb`i'') method(`method`i'')  
-					matrix table[`i', 7] = r(lblvl)*100
+					`call_svyp' level(`lcb`i'') 
+					matrix table[`i', 7] = r(lb_alpha)*100
 				}
 			}
 				
 			if "`ucb`i''" != "" & "`ucb`i''" != "." {
 				if `ucb`i'' >= 50 {
-					qui svyp `y' `ifi', level(`ucb`i'') method(`method`i'')  
-					matrix table[`i', 8] = r(ublvl)*100
+					`call_svyp' level(`ucb`i'')  
+					matrix table[`i', 8] = r(ub_alpha)*100
 				}
 			}
 			
@@ -841,33 +908,32 @@ program define iwplot_svyp
 				
 				* if the user has requested the 50th percentile it is the survey estimate
 				if `mv' == 50 {
-					qui svyp `y' `ifi',  method(`method`i'')  
-					matrix table[`i', 9] = r(svyp)*100
+					matrix table[`i', 9] = table[`i', 1]
 				}
 				
 				* if user has requested one below 50, 
 				* it is the lower limit of a 2*(100-mv)-100% confidence interval
 				if `mv' >= 0.01 & `mv' < 50 {
 					local mvlvl = 2*(100-`mv')-100
-					qui svyp `y' `ifi', level(`=int(`mvlvl')') method(`method`i'')  
-					matrix table[`i', 9] = r(lblvl)*100
+					`call_svyp' level(`=int(`mvlvl')')
+					matrix table[`i', 9] = r(lb_alpha)*100
 				}
 				
 				* if user has requested one above 50, 
 				* it is the upper limit of a 2*mv-100% confidence interval
 				if `mv' > 50 & `mv' < 99.9 {
 					local mvlvl = 2*`mv'-100
-					qui svyp `y' `ifi', level(`=int(`mvlvl')') method(`method`i'')  
-					matrix table[`i', 9] = r(ublvl)*100
+					`call_svyp' level(`=int(`mvlvl')')   
+					matrix table[`i', 9] = r(ub_alpha)*100
 				}
 			}
 			
 			* Clipping happens at the upper and lower limits of a clip% CI
 			
 			if `clip`i''!=. {	
-				qui svyp `y' `ifi', level(`clip`i'') method(`method`i'')  
-				matrix table[`i', 10] = r(lblvl)*100  
-				matrix table[`i', 11] = r(ublvl)*100
+				`call_svyp' level(`clip`i'')
+				matrix table[`i', 10] = r(lb_alpha)*100  
+				matrix table[`i', 11] = r(ub_alpha)*100
 			}
 
 			* Now calculate the x and y coordinates of NL pairs of points to  
@@ -875,27 +941,26 @@ program define iwplot_svyp
 			
 			* Begin by calculating the x coordinates...these are the upper 
 			* and lower bounds of nl CIs ... one at lvl1, lvl2, etc.
-						
-			forvalues j = 1/`nl' {
 			
-				qui svyp `y' `ifi', level(`lvl`j'') method(`method`i'') 	
+			`call_svyp' cilevellist(${CILEVELLIST_`nl'}) 
+			
+			matrix ci_list = r(ci_list)
+			
+			forvalues j = 1/`nl' {
+							
+				* calculate the appropriate height (h) value for this interval
+				* so the area under the rectangles defined by ui and li will
+				* sum up to about 99.99 - 0.01 = 99.98 %
 				
-				* the area (a) matrix, lower bound (l) matrix, and 
-				* upper bound (u) matrix are temporary holders of 
-				* values used for calculation...they will not be passed
-				* forward into the plotting dataset
-				
-				scalar ai = `lvl`j''
-				scalar li = r(lblvl)*100
-				scalar ui = r(ublvl)*100
+				scalar ai = ci_list[`j',1]
+				scalar li = ci_list[`j',2]*100
+				scalar ui = ci_list[`j',3]*100
 				
 				matrix avals[`i',`j'] = ai
 				matrix lvals[`i',`j'] = li
 				matrix uvals[`i',`j'] = ui
-					
-				* calculate the appropriate height (h) value for this interval
-				* so the area under the rectangles defined by ui and li will
-				* sum up to about 99.99 - 0.01 = 99.98 %
+				
+				scalar uimli = ui - li
 				
 				if `j' == 1 {
 					scalar uimli = ui - li
@@ -906,7 +971,7 @@ program define iwplot_svyp
 				
 				if `j' > 1 {
 					scalar uimli = ui -li
-					scalar hi = (ai - `lvl`=`j'-1'') / (uimli - lastuimli)
+					scalar hi = (ai - real(word("${CILEVELLIST_`nl'}",`=`j'-1'))) / (uimli - lastuimli)
 					matrix hvals[`i',`j'] = hi			
 					scalar lastuimli = uimli
 				}
@@ -1048,7 +1113,7 @@ program define iwplot_svyp
 		
 		tempfile tempfile1 
 		save `tempfile1', replace
-				
+		
 		* distribution number (dn)
 		gen dn = _n
 		
@@ -1059,6 +1124,9 @@ program define iwplot_svyp
 		}			
 
 		* go from wide dataset to long
+		drop if    p == .
+		drop if ssx1 == .
+		
 		reshape long ssx ssy sbx sby, i(dn) j(j)
 		
 		* calculate scaling factor to give  equal area
@@ -1190,6 +1258,8 @@ program define iwplot_svyp
 			* macro variables to plot tick marks of CIs
 			local lcbpct`i' = lcbpct[`i']
 			local ucbpct`i' = ucbpct[`i']
+			local lb95`i' =  lb_95pct[`i']
+			local ub95`i' =  ub_95pct[`i']			
 		}
 
 
@@ -1199,29 +1269,33 @@ program define iwplot_svyp
 		use `tempfile2', clear
 		
 		* lower limit of traditional 95% CI
-		gen     lb_str1 = string(lb_95pct, "%4.1f")
+		gen     lb_str1 = string(lb_95pct, "%4.${VCQI_NUM_DECIMAL_DIGITS}f")
 		replace lb_str1 = "100" if lb_str1=="100.0"
 		* upper limit of traditional 95% CI
-		gen     ub_str1 = string(ub_95pct, "%4.1f")
+		gen     ub_str1 = string(ub_95pct, "%4.${VCQI_NUM_DECIMAL_DIGITS}f")
 		replace ub_str1 = "100" if ub_str1=="100.0"
 
 		gen     lb_str2 = "0"
 		* 95% upper confidence bound (UCB)
-		gen     ub_str2 = string(ub_90pct, "%4.1f")
+		gen     ub_str2 = string(ucbpct, "%4.${VCQI_NUM_DECIMAL_DIGITS}f")
 		replace ub_str2 = "100" if ub_str2=="100.0"
 		
 		* 95% lower confidence bound (LCB)
-		gen     lb_str3 = string(lb_90pct, "%4.1f")
+		gen     lb_str3 = string(lcbpct, "%4.${VCQI_NUM_DECIMAL_DIGITS}f")
 		replace lb_str3 = "100" if lb_str3=="100.0"
 		gen ub_str3 = "100"
 		
 		gen cistring0 = ""
+		
+		gen pstring = strtrim(string(p, "%4.${VCQI_NUM_DECIMAL_DIGITS}f"))
+		replace pstring = "100" if pstring == "100.0"
+		replace pstring = pstring + "%"
 
 		*   cistring1 contains lower 95% confidence bound (LCB), p, and 95% upper confidence bound
-		gen cistring1 =  strtrim(lb_str3) + " | " + strtrim(string(p, "%4.1f")) + " | " + ub_str2 
+		gen cistring1 =  strtrim(lb_str3) + " | " + pstring + " | " + ub_str2 
 
 		*   cistring2 contains p, (95%CI)
-		gen cistring2 =  strtrim(string(p, "%4.1f")) + " (" + lb_str1 + "," + ub_str1 + ")"
+		gen cistring2 =  pstring + " (" + lb_str1 + "," + ub_str1 + ")"
 
 		*   cistring3 contains p, (0, 95% UCB]
 		gen cistring3 = strtrim(cistring2) + " (" + lb_str2 + "," + ub_str2 + "]" 
@@ -1231,14 +1305,23 @@ program define iwplot_svyp
 
 		*   cistring5 contains p, 95% CI, (95% LCB, 100] [0, 95% UCB)
 		gen cistring5 = strtrim(cistring2) + " [" + lb_str3 + "," + ub_str3 + ")" + " (" + lb_str2 + "," + ub_str2 + "]" 
+		
+		*   cistring6 contains 2sided-95%-lower-limit - p - 2sided-95%-upper-limit  N=N
+		*   (where N is ESS for ESS and N for DATASET)
+		* 	(and the estimates do not have info after decimal place, per Nigeria 2016 MICS/NICS report protocol)
+		
+		gen cistring6 = string(lb_95pct, "%02.0f") + " - " + string(p, "%02.0f") + " - " + string(ub_95pct, "%02.0f") + "  N= " + string(effss, "%5.0fc")
+		replace cistring6 = " " + cistring6 if lb_95pct < 9.5
+		replace cistring6 = subinstr(cistring6,"N=","N= " ,1) if effss < 1000 & effss > 99
+		replace cistring6 = subinstr(cistring6,"N=","N=  ",1) if effss < 99
+		replace cistring6 = cistring6 + " (*)" if effss < 50 & effss > 25
+		replace cistring6 = cistring6 + " (!)" if effss < 25
 
 		* Clear out the auto-generated cistrings if the user is plotting more 
 		* than one distribution per row - we can't know which distribution to 
 		* summarize when there is more than one per row, so don't summarize any
 		
-		if `nplotrows' < `bign' {	
-		replace cistring`citext' = ""	
-		}
+		if `multiple_shapes_on_some_rows' replace cistring`citext' = ""	
 		
 		* But allow user-specified text at right...the user can manage this
 		* via the inputs and will have a fix if they get more text than 
@@ -1269,16 +1352,12 @@ program define iwplot_svyp
 		*************************************************************************************
 		* ysize(#) and xsize(#) specify relative height and width of the available area.
 		* Each takes values from 0 to 20.  
-		* if user wants to plot fewer than 10 distributions then plot will be 
-		* square
-		* if user wants to plot fewer than 10 distributions then plot will be square
 		* if user wants to plot more than 10 distributions then plot will be vertical rectangular 
 		* The user can change the aspect ratio after the plot is saved, using the
 		* graph display, xsize() ysize() command
-		if `xsize' == 10 & `ysize' == 10 {
+		if "`xsize'" == "" & "`ysize'" == "" &  `nplotrows' > 10 {
 			local ysize 20
-			if `nplotrows' <= 10 local xsize 20
-			if `nplotrows' > 10  local xsize `= min(20, (20+ (20*(10/`bign')))/2)'
+			local xsize `= min(20, (20+ (20*(10/`nplotrows')))/2)'
 		}
 
 		* Range of X axis
@@ -1287,42 +1366,89 @@ program define iwplot_svyp
 
 		* If xaxisrange was left blank then it will be created here based on x minimum and maximum values
 				
-		if "`xaxisrange'" == "" {
+		if `xaxisdesign' == 1 {  // Always plot from 0 to 100 with text beyond 100
 			local xrangemin 0
-			local xrangemax = ceil(105 + `lencitext'*1.7)
+			local xlabelmax 100
+			if "`citextleftmargin'" != "" local xtextstart = `xmaxall' + `citextleftmargin'
+			else local xtextstart = 103
+			local xtextscale = 1.1
+			local xrangemax = max(100,ceil(`=`xtextstart' + `lencitext'*`xtextscale'')) 
 			local xaxisrange  `xrangemin' `xrangemax'
 		}
-		else {
-			local xrangemin = word("`xaxisrange'",1)
-			local xrangemax = word("`xaxisrange'",2)		
+		else if `xaxisdesign' == 2 {  // Round down and up from xlimits of data
+			local round5min = round(`xminall',5)
+			if `round5min' >= `xminall' local round5min = `round5min' - 5
+			local xrangemin = max(0,`round5min')
+			local round5max = round(`xmaxall',5)
+			if `round5max' <= `xmaxall' local round5max = `round5max' + 5
+			local xlabelmax = min(`round5max',100)
+			if "`citextleftmargin'" != "" local xtextstart = `xmaxall' + `citextleftmargin'
+			else local xtextstart = `xlabelmax' + 1
+			local xtextscale = max(0.3,`=1.1*(`xtextstart' - `xrangemin')/100')
+			local xrangemax = ceil(`=`xtextstart' + `lencitext'*`xtextscale'')
+
+			local xaxisrange  `xrangemin' `xrangemax'
 		}
-
-		* Create coordinate variables to position CI text on the right 
-		*********************************************************************** 
-		* For VCQI, CI text will always start at x=105 
-		gen text_x = min(105,`=`xrangemax'+5')
-
-		* center text vertically on the integer y-values
-		gen text_y = rownumber
+		else if `xaxisdesign' == 3 {  // user specified max and min
+			local xrangemin = word("`xaxisrange'",1)
+			local xrangemax = word("`xaxisrange'",2)	
+			if `xrangemin' > `xminall' {
+				local round5min = round(`xminall',5)
+				if `round5min' >= `xminall' local round5min = `round5min' - 5
+				local xrangemin = max(0,`round5min')
+			}
+			local round5max = round(`xmaxall',5)
+			if `round5max' <= `xmaxall' local round5max = `round5max' + 5
+			local xlabelmax = min(`round5max',100)
+			if "`citextleftmargin'" != "" local xtextstart = `xmaxall' + `citextleftmargin'
+			else local xtextstart = `xlabelmax' + 1
+			local xaxisrange  `xrangemin' `xrangemax'
+		}
 		
-		* establish two x,y pairs for plotting a large white rectangle strip
-		* from the top to the bottom of the plot, at right...this will cover
-		* the right edge of any YLINE options and keep them from interfering
-		* with the citext that starts at x=105
+		if index("`twoway'","xlabel") > 0 local user_specified_xlabel 1
 		
-		gen shadeclipx = .
-		gen shadeclipy = `nplotrows' + 0.5 if _n < 3
-		replace shadeclipx = 103 in 1
-		set obs `=max(_N,2)'
-		replace shadeclipx = `xrangemax' in 2
-
-		save `tempfile2', replace
+		local xrangelen = `xlabelmax' - `xrangemin'
+		
+		if inrange(`xrangelen',2,13)   local step  2
+		if inrange(`xrangelen',13,32)  local step  5
+		if inrange(`xrangelen',32,59)  local step 10
+		if inrange(`xrangelen',59,80)  local step 20
+		if inrange(`xrangelen',80,200) local step 25
 		
 		* Tilt of x axis labels
 		************************nk m***********************************************************
 		* if x axis extends to 150% then tilt labels at 45 degrees angle
 		local xlabangle 0
 		if `xrangemax' > 150 local xlabangle 45
+		
+		if index("`twoway'","xlabel") == 0 local xlabel xlabel(`xrangemin'(`step')`xlabelmax',angle(`xlabangle')) 
+		
+		* Create coordinate variables to position CI text on the right 
+		*********************************************************************** 
+		* For VCQI, CI text will always start at x=105 
+		
+		gen text_x = `xtextstart'
+
+		* center text vertically on the integer y-values
+		gen text_y = rownumber
+		
+		* If the user has requested xlines (by specifying 1+ horizontal lines
+		* with no start and top x-coordinates) then we want to paint a white box 
+		* at the right side to cover the ylines so they do not interfere
+		* with citext or rightsidetext		
+		
+		* establish two x,y pairs for plotting a large white rectangle strip
+		* from the top to the bottom of the plot
+		
+		gen shadeclipx = .
+		gen shadeclipy = `nplotrows' + 0.5 if _n < 3
+		* Suggested improvement from Stas
+		replace shadeclipx = `xtextstart'-1 in 1
+		set obs `=max(_N,2)'
+		replace shadeclipx = `xrangemax' in 2
+
+		save `tempfile2', replace
+
 
 		* Assign user-specified rownames to a value label and apply it to dn
 		***********************************************************************
@@ -1339,18 +1465,32 @@ program define iwplot_svyp
 		local plotit `plotit' (scatter rownumber p , m(i) c(none)) 
 
 		* syntax to shade behind selected distributions
+		
 		gen yshade = .
 		gen xshade = .
 		forvalues i = 1/`nplotrows' {
 			if "`shadebehind`i''" != "" {
 				replace yshade = `i'+0.45 	if rownumber == `i' & inlist(j,1,2)
 				replace xshade = `xrangemin' 		if rownumber == `i' & j == 1
-				replace xshade = `=min(`=`xrangemax' + 3',103)'	if rownumber == `i' & j == 2
+				replace xshade = `=min(`xlabelmax',100)'	if rownumber == `i' & j == 2
 				local plotit `plotit' ( area yshade xshade if rownumber == `i', color(`shadebehind`i'') fcolor(`shadebehind`i'') base(`=`i'-0.45') )
 			}
 		}	
-								   
-		* add vertical reference lines that the user requested
+				
+		* syntax to add bars to the plot
+
+		if !inlist("$IWPLOT_SHOWBARS","", "0") {
+			gen ybar = .
+			gen xbar = .
+			forvalues i = 1/`nplotrows' {
+				replace ybar = `i'+0.20 			if rownumber == `i' & inlist(j,1,2)
+				replace xbar = `xrangemin' 			if rownumber == `i' & j == 1
+				replace xbar = `=min(`=table[`i', 1]',100)'	if rownumber == `i' & j == 2
+				local plotit `plotit' ( area ybar xbar if rownumber == `i', color(`outlinecolor`i'') lwidth(vthin) fcolor(`areacolor`i'')  fi(`areaintensity`i'') base(`=`i'-0.20') )
+			}	
+		}
+		
+		* Build macros to plot vertical reference lines that the user requested
 		*
 		* If the user specified y-coordinates for the lines to start and stop then
 		* plot them using scatteri; if the lines are to extend all the way up
@@ -1368,7 +1508,7 @@ program define iwplot_svyp
 			}
 		}
 
-		* add horizontal reference lines that the user requested
+		* Build macros to plot horizontal reference lines that the user requested
 		*
 		* If the user specified x-coordinates for the lines to start and stop then
 		* plot them using scatteri; if the lines are to extend all the way across
@@ -1384,8 +1524,9 @@ program define iwplot_svyp
 					local horlinespartial `horlinespartial' (scatteri `ycoord`i'' `xstart`i'' `ycoord`i'' `xstop`i''  , c(direct) m(i) lc(`coloryl`i'') lw(`widthyl`i'') lstyle(`styleyl`i'') lpattern(`patternyl`i'') )
 				}
 			}
-		}
-		
+		}		
+			
+   		
    		* Add custom text that user has requested
 		
 		local textonplotit
@@ -1426,14 +1567,19 @@ program define iwplot_svyp
 			
 			if `polygon`i'' == 3 local plotit `plotit' (line sbyy sbx if dn==`i', connect(direct) lc(`outlinecolor`i'') ///
 			                                         lw(`outlinewidth`i'') lp(`outlinepattern`i'') ls(`outlinestyle`i'') ) 
-			
-			if `polygon`i'' == 2 local plotit `plotit' (area sbyy sbx if dn==`i', fc(`areacolor`i'') fi(`areaintensity`i'') ///
+						
+			* Plot inchworm shape if the user has not asked for bars 
+			if inlist("$IWPLOT_SHOWBARS","", "0") & `polygon`i'' == 2 local plotit `plotit' (area sbyy sbx if dn==`i', fc(`areacolor`i'') fi(`areaintensity`i'') ///
 			                                                lc(`outlinecolor`i'') lw(`outlinewidth`i'') lp(`outlinepattern`i'') ///
 															ls(`outlinestyle`i'') nodropbase)  
-
-			* Plot reference line inside the distribution at the point estimate
+															
+			* Plot the 2-sided CI instead of inchworm shape if user specifies they want to see bars
 			
-			local plotit `plotit' (rspike ymin ymax p if dn==`i' & j==1,  lc(`outlinecolor`i'') lw(thin)) 
+			if !inlist("$IWPLOT_SHOWBARS","", "0") & `polygon`i'' == 2 local plotit `plotit' (scatteri `rownumber`i'' `lb95`i'' `rownumber`i'' `ub95`i'', c(direct) m(i) lw(*0.5) lc(gs8))
+
+			* Plot reference line inside the distribution at the point estimate (but not if the user requested bars instead of distributions)
+			
+			if inlist("$IWPLOT_SHOWBARS","", "0") local plotit `plotit' (rspike ymin ymax p if dn==`i' & j==1,  lc(`outlinecolor`i'') lw(thin)) 
 			
 			* The user can ask to see a vertical reference line at a point that they specify
 			if `markvalue`i'' != . {
@@ -1458,12 +1604,13 @@ program define iwplot_svyp
 		}
 
 		* Add citext to the right edge of the plot
-		* first lay down a white rectangle at the right of the plot to provide
+		* If user has specified YLINES (horizontal lines with no start/stop x-coords) 
+		* then first lay down a white rectangle at the right of the plot to provide
 		* a clean background for the citext (cover the right edge of any YLINEs)
-		* Note: mlabg(*-1) means it starts right at x=105, no gap
+		* Note: mlabg(*-1) means it starts right at text_x, with no gap
 		******************************************************************
-		if (`citext'!=0 & `nplotrows' == `bign') | `showtextatright' == 1 {
-			local plotit `plotit' (area shadeclipy shadeclipx, color(white) fcolor(white))
+		if (`citext'!=0 & `multiple_shapes_on_some_rows' == 0) | `showtextatright' == 1 {
+			if "`horlinesthrough'" != "" local plotit `plotit' (area shadeclipy shadeclipx, color(white) fcolor(white))
 			local plotit `plotit' (scatter text_y text_x, mlabel(cistring`citext') m(i) mlabg(*-1) mlabsize(*0.65) mlabcolor(black) ) 
 		}
 		
@@ -1472,28 +1619,27 @@ program define iwplot_svyp
 
 		local  plotit `plotit' `horlinespartial' `verlinespartial' `textonplotit' `arrowsplotit'
 		
-		if `xrangemin'==0 & `xrangemax'>=100 local step 25
-		else local step 10
-		
 		graph twoway `plotit' , 	///
 			`horlinesthrough' 		///
 			`verlinesthrough' 		///
 			legend(off) 			///
-			ysize(`ysize') 			///
-			xsize(`xsize') 			///
 			ylabel(1(1)`nplotrows', ang(hor) nogrid valuelabel labsize(small))	///
 			graphregion(color(white)) 	 				///
-			xscale(range(`xaxisrange') titlegap(*10)) 	///
-			xlabel(`xrangemin'(`step')`=min(100,`xrangemax')',angle(`xlabangle')) ///
+			xscale(range(`xaxisrange') titlegap(*10)) `xlabel'	///
 			yscale(titlegap(1)) 	///
+			ysize(`ysize') 			///
+			xsize(`xsize') 			///
 			xtitle(`xtitle')  		///
 			ytitle(`ytitle') 		///
 			title(`title')			///
 			subtitle(`subtitle')	///
 			note(`note')			///
+			caption(`caption')		///
 			name(`name')	 		///
-			saving(`saving') 		///
-			`twoway'
+			saving(`saving') `twoway' 
+			
+
+
 			
 		* export graph in chosen format
 		if `"`export'"'. != "" {
@@ -1501,7 +1647,6 @@ program define iwplot_svyp
 			noi di "Exported inchworm plot:"
 			noi di `"`export'"'
 		}
-		
 
 		* clear working directory
 		if upper("`cleanwork'") != "YES" {
